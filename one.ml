@@ -105,6 +105,173 @@ let rotate_left n list =
   let left, right = split n' list in
     right @ left
 
+let rand_select n list =
+  let rec extract acc n = function
+    | [] -> raise Not_found
+    | h :: t ->
+       if n = 0
+       then (h, (List.rev acc) @ t)
+       else extract (h :: acc) (n - 1) t
+  and extract_rand len list =
+    extract [] (Random.int len) list
+  and aux n acc len list =
+    if n = 0
+    then
+      acc
+    else
+      let picked, rest = extract_rand len list in
+        aux (n - 1) (picked :: acc) (len - 1) rest
+  in
+    aux n [] (List.length list) list
+
+let lotto n list =
+  rand_select n (range 1 n)
+
+let permutation list =
+  rand_select (List.length list) list
+
+let rec permutations = function
+  | [x] :: t        -> permutations t |> List.map (List.cons x)
+  | (h0 :: t0) :: t ->  (permutations ([h0] :: t)) @ (permutations (t0 :: t))
+  | []              -> [[]]
+  | [] :: _         -> [] (* this case is never matched *)
+
+let rec combinations n list =
+  if n > 0
+  then
+    match list with
+    | [] -> []
+    | h :: t ->
+       let combos_with_h = List.map (List.cons h) (combinations (n - 1) t) in
+       let combos_without_h = combinations n t in
+         combos_with_h @ combos_without_h
+  else 
+    [[]]
+
+let is_prime x =
+  let rec aux y =
+    if y <= 1 then true
+    else if x mod y = 0 then false
+    else aux (y - 1)
+  in
+    aux (x - 1)
+
+let gcd a b =
+  let rec aux i =
+    if (a mod i) = 0 && (b mod i) = 0
+    then i
+    else aux (i - 1)
+  in
+    aux (min a b)
+
+let are_coprimes a b =
+  gcd a b = 1
+
+let phi n =
+  range 1 (n - 1)
+  |> List.filter (are_coprimes n)
+  |> List.length
+
+let rec factors_of n =
+  let rec aux i =
+    if n mod i = 0
+    then i :: factors_of (n / i)
+    else aux (i + 1)
+  in
+    if n > 1
+    then aux 2
+    else []
+
+let rec factors_of' n =
+  factors_of n |> encode';;
+
+let prime_numbers_in_range i0 i1 =
+  range i0 i1
+  |> List.filter is_prime
+
+let goldbach_pairs n =
+  range 1 (n/2)
+  |> List.map (fun x -> x, n - x)
+  |> List.filter (fun (a, b) -> is_prime a && is_prime b)
+
+let goldbach_pair n =
+  match goldbach_pairs n with
+  | h :: _ -> Some h
+  | [] -> None
+
+type bool_expr =
+  | Var of string
+  | Not of bool_expr
+  | And of bool_expr * bool_expr
+  | Or of bool_expr * bool_expr
+
+let truth_table vars (expr:bool_expr) =
+  let rec eval (lookup:(string*bool) list) = function
+    | Var x        -> List.assoc x lookup
+    | Not e        -> not (eval lookup e)
+    | And (e1, e2) -> (&&) (eval lookup e1) (eval lookup e2)
+    | Or (e1, e2)  -> (||) (eval lookup e1) (eval lookup e2)
+  in
+  let var_combo = List.map
+                    (fun x -> [(x, false); (x, true)])
+                    vars
+  in
+    var_combo
+    |> permutations
+    |> List.map (fun x -> x, eval x expr)
+
+let rec greycode n =
+  range 1 n
+  |> List.map (fun _ -> [0; 1]) 
+  |> permutations
+  |> List.map (fun l ->
+      l
+      |> List.map string_of_int
+      |> String.concat ""
+    )
+
+module BT = struct
+  type 'a t =
+    | Empty
+    | Node of 'a * 'a t * 'a t
+
+  let rec count_tree = function
+    | Empty -> 0
+    | Node(_, left, right) -> 1 + count_tree left + count_tree right
+
+  let rec count_leaves = function
+    | Empty -> 0
+    | Node(_, Empty, Empty) -> 1
+    | Node(_, left, right) -> count_leaves left + count_leaves right
+
+  let rec collect_leaves = function
+    | Empty -> []
+    | Node(x, Empty, Empty) -> [x]
+    | Node(_, left, right) -> collect_leaves left @ collect_leaves right
+
+  let rec collect_internals = function
+    | Empty | Node(_, Empty, Empty) -> []
+    | Node(x, left, right) -> x :: (collect_internals left @ collect_internals right)
+
+  let rec nodes_at_depth n = function
+    | x when n = 0 -> [x]
+    | Empty -> []
+    | Node(_, left, right) -> (nodes_at_depth (n - 1) left)
+                              @ (nodes_at_depth (n - 1) right)
+end
+
+module MT = struct
+  type 'a mult_tree = T of 'a * 'a mult_tree list
+
+  let rec count_nodes = function
+    | T(_, trees) -> List.fold_left
+                       (fun acc x -> acc + (count_nodes x))
+                       1
+                       trees
+end
+
+(* variables to use in interactive shell (eg. utop) *)
+
 let repeating_list = [
   "a";"a";"a";"a";
   "b";

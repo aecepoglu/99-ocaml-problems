@@ -1,1 +1,2 @@
-while true; do ocaml -init one.ml; done
+#!/usr/bin/env bash
+while true; do clear; utop -init "one.ml"; read -p "restart? "; done
