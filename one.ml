@@ -1,3 +1,9 @@
+let rec pow a b =
+  if b <= 0 then 1
+  else a * (pow a (b - 1))
+
+let sqr = pow 2
+
 let pack list =
   let rec aux cur acc = function
     | a :: (b :: _ as t) ->
@@ -231,9 +237,9 @@ let rec greycode n =
     )
 
 module BT = struct
-  type 'a t =
+  type 'a tree =
     | Empty
-    | Node of 'a * 'a t * 'a t
+    | Node of 'a * 'a tree * 'a tree
 
   let rec count_tree = function
     | Empty -> 0
@@ -258,6 +264,205 @@ module BT = struct
     | Empty -> []
     | Node(_, left, right) -> (nodes_at_depth (n - 1) left)
                               @ (nodes_at_depth (n - 1) right)
+
+  let rec is_completely_balanced = function
+    | Empty -> true
+    | Node(_, left, right) ->
+       abs (count_tree left - count_tree right) <= 1
+
+  let sum_trees lefts rights acc0 =
+    List.fold_left
+      (fun acc left ->
+         List.fold_left
+           (fun acc' right ->
+              (Node('x', left, right)) :: acc'
+           )
+           acc
+           rights
+      )
+      acc0
+      lefts
+
+  let rec create_balanced n =
+    if n = 0 then
+      [Empty]
+    else if n mod 2 = 0 then
+      let trees_1 = create_balanced (n / 2) in
+      let trees_2 = create_balanced ((n / 2) - 1) in
+        sum_trees trees_1 trees_2
+          (sum_trees trees_2 trees_1 [])
+    else
+      let trees = create_balanced (n/2) in
+        sum_trees trees trees []
+
+  let rec create_height_balanced h =
+    if h = 0 then
+      [Empty]
+    else if h = 1 then
+      [Node('x', Empty, Empty)]
+    else
+      let t1 = create_height_balanced (h - 1) in
+      let t2 = create_height_balanced (h - 2) in
+        sum_trees t1 t2 (sum_trees t2 t1 (sum_trees t1 t1 []))
+
+  let rec are_symmetrical left right =
+    match (left, right) with
+    | (Empty, Empty) -> true
+    | (Node(a, ll, lr), Node(b, rl, rr)) -> a = b
+                                            && (are_symmetrical ll rr)
+                                            && (are_symmetrical lr rl)
+    | _ -> false
+
+  let rec is_symmetrical = function
+    | Empty -> true
+    | Node(_, l, r) -> are_symmetrical l r
+
+  let rec add_to_search_tree x = function
+    | Empty -> Node(x, Empty, Empty)
+    | Node(a, l, r) ->
+       if x < a
+       then
+         Node(a, add_to_search_tree x l, r)
+       else
+         Node(a, l, add_to_search_tree x r)
+
+  let create_search_tree xs =
+    List.fold_left
+      (fun t x -> add_to_search_tree x t)
+      Empty
+      xs
+
+  let iter_bfs f t =
+    let rec aux = function
+      | [] -> ()
+      | Empty :: t -> aux t
+      | Node(x, ltree, rtree) :: t ->
+         let _ = f x in
+           aux (ltree :: rtree :: t)
+    in
+      aux [t]
+
+  let is_complete_tree n tree =
+    let rec aux i = function
+      | [] -> i = n + 1
+      | Empty :: t -> List.for_all ((=) Empty) t && aux i []
+      | Node(x, ltree, rtree) :: t ->
+         if x = i
+         then aux (x + 1) (ltree :: rtree :: t)
+         else false
+    in
+      aux 1 [tree]
+
+  let create_complete_tree n =
+    let rec aux i =
+      if i > n
+      then Empty
+      else Node(i,
+                aux (2*i),
+                aux (2*i + 1)
+               )
+    in
+      aux 1
+
+  let layout_1 (tree:'a tree) :(('a*int*int) tree)=
+    let rec iter i0 d = function
+      | Empty -> (i0, Empty)
+      | Node(x, ltree, rtree) ->
+         let (il, ltree') = (match ltree with
+             | Empty -> i0, Empty
+             | y -> iter i0 (d + 1) y
+           ) in
+         let (ir, rtree') = (match rtree with
+             | Empty -> il + 1, Empty
+             | y -> iter (il + 1) (d + 1) y
+           ) in
+           (
+             ir,
+             Node((x, il + 1, d), ltree', rtree')
+           )
+    in
+    let (_, result) = iter 0 1 tree in
+      result
+
+  let rec depth = function
+    | Empty -> 0
+    | Node(_, l, r) -> 1 + max (depth l) (depth r)
+
+  let layout_2 tree :(('a*int*int) tree) =
+    let d_max = depth(tree) in
+    let rec left_only_depth = function
+      | Empty -> 0
+      | Node(_, l, _) -> 1 + left_only_depth l
+    in
+    let rec aux x0 d = function
+      | Empty -> Empty
+      | Node(x, ltree, rtree) ->
+         let dx = pow 2 (d_max - d - 1) in
+         let ltree' = aux (x0 - dx) (d + 1) ltree in
+         let rtree' = aux (x0 + dx) (d + 1) rtree in
+           Node((x, x0, d), ltree', rtree')
+    in
+    let missing_left_depth = d_max - left_only_depth tree in
+    let left_offset = (pow 2 missing_left_depth) - 1 in
+    let x_root = (pow 2 (d_max - 1)) - left_offset in
+      aux x_root 1 tree
+
+  let sym_and_balanced n =
+    create_balanced n
+    |> List.filter is_symmetrical
+
+  let print_by f x =
+    let rec aux f prefix = function
+      | Empty -> print_string "·"
+      | Node(a, left, right) ->
+         let mystr = f a in
+         let spaces = String.make ((String.length mystr) - 1) ' ' in
+         let () = print_string mystr in
+         let () = print_string " ─┬─ " in
+         let () = aux f (prefix ^ spaces ^ "   │  ") right in
+         let () = print_string ("\n" ^ prefix ^ spaces ^ "   └─ ") in
+           aux f (prefix ^ spaces ^ "      ") left
+    in
+    let () = aux f "" x in
+      print_endline ""
+
+  let rec to_string f = function
+    | Empty -> ""
+    | Node(x, Empty, Empty) -> f x
+    | Node(x, l, r) -> (f x)
+                       ^ "("
+                       ^ (to_string f l)
+                       ^ ","
+                       ^ (to_string f r)
+                       ^ ")"
+
+  let from_string s =
+    let rec aux i :(int*'a tree) =
+      if s.[i] = ',' || s.[i] = ')' then
+        (i + 0, Empty)
+      else
+        let c = s.[i] in
+          if s.[i+1] = '(' then
+            let l_i, ltree = aux (i + 2) in (*skip 'x(' *)
+            let r_i, rtree = aux (l_i + 1) in (*skip ',' *)
+              (r_i + 1 (*skip ')'*), Node(c, ltree, rtree))
+          else
+            (i + 1, Node(c, Empty, Empty))
+            (*
+              a(b(d,e),c(,f(g,)))
+            *)
+    in
+      aux 0 |> snd
+
+  let preorder_seq tree =
+    let rec aux acc = function
+      | Empty -> acc
+      | Node(x, ltree, rtree) -> x :: aux (aux acc rtree) ltree 
+    in
+      aux [] tree
+
+  let print_int = print_by string_of_int
+  let print_char = print_by Char.escaped
 end
 
 module MT = struct
@@ -268,6 +473,79 @@ module MT = struct
                        (fun acc x -> acc + (count_nodes x))
                        1
                        trees
+
+  (*   afg^^c^bd^e^^^
+
+
+       a^b^c
+  *)
+  let from_hatstring str :char mult_tree =
+    let maxlen = String.length str in
+    let rec aux i =
+      if i >= maxlen
+      then i, []
+      else
+        let c = str.[i] in
+          if c = '^' then
+            i, [] (*TODO*)
+          else
+            let i', children = aux (i + 1) in
+            let i'', siblings = aux (i' + 1) in
+              i'', T(c, children) :: siblings
+    in
+      aux 0
+      |> snd
+      |> List.hd
+
+  let to_hatstring tree =
+    let rec aux = function
+      | [] -> ""
+      | T(x, subtrees) :: t -> (Char.escaped x)
+                               ^ aux subtrees
+                               ^ "^" 
+                               ^ aux t
+    in
+      aux [tree]
+
+  let ipl tree =
+    let rec aux dist_to_root = function
+      | [] -> 0
+      | T(_, subtrees) :: tl -> dist_to_root
+                                + aux (dist_to_root + 1) subtrees
+                                + aux (dist_to_root) tl
+    in
+      aux 0 [tree]
+
+  let rec bottom_up = function
+    | T(x, subtrees) -> (subtrees
+                        |> List.map bottom_up
+                        |> List.flatten
+                       ) @ [x]
+
+  let rec lispy (tree:char mult_tree) :string =
+    match tree with
+    | T(x, []) -> Char.escaped x
+    | T(x, subtrees) -> "("
+                        ^ (Char.escaped x)
+                        ^ " "
+                        ^ (subtrees
+                           |> List.map lispy
+                           |> String.concat " "
+                          )
+                        ^ ")"
+
+  let example1 = (T('a', [T('f',[]) ]))
+  let example2 =
+    T('a', [
+      T('f', [
+          T('g', [])
+        ]);
+      T('c', []);
+      T('b', [
+          T('d',[]);
+          T('e',[]);
+        ])
+    ])
 end
 
 (* variables to use in interactive shell (eg. utop) *)
@@ -281,3 +559,32 @@ let repeating_list = [
   "e";"e";"e";"e";
 ]
 let numbers = range 1 8
+let example_tree =
+  BT.Node('a',
+          BT.Node('b',
+                  BT.Node('d',
+                          BT.Empty,
+                          BT.Empty
+                         ),
+                  BT.Node('e',
+                          BT.Empty,
+                          BT.Empty
+                         )
+                 ),
+          BT.Node('c',
+                  BT.Empty,
+                  BT.Node('f',
+                          BT.Node('g',
+                                  BT.Empty,
+                                  BT.Empty
+                                 ),
+                          BT.Empty
+                         )
+                 )
+         )
+let example_layout_tree =
+  let leaf x = BT.Node (x,BT.Empty,BT.Empty) in
+    BT.Node('n', BT.Node('k', BT.Node('c', leaf 'a',
+                                      BT.Node('e', leaf 'd', leaf 'g')),
+                         leaf 'm'),
+            BT.Node('u', BT.Node('p', BT.Empty, leaf 'q'), BT.Empty));;
