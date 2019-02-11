@@ -548,6 +548,15 @@ module MT = struct
     ])
 end
 
+module Queue = struct
+  type 'a node = N of 'a * 'a node * 'a node
+               | E
+
+  type 'a queue = Q of ('a node * 'a node)
+
+  let create () = Q(E, E)
+end
+
 (* variables to use in interactive shell (eg. utop) *)
 
 let repeating_list = [
@@ -558,33 +567,3 @@ let repeating_list = [
   "d";"d";
   "e";"e";"e";"e";
 ]
-let numbers = range 1 8
-let example_tree =
-  BT.Node('a',
-          BT.Node('b',
-                  BT.Node('d',
-                          BT.Empty,
-                          BT.Empty
-                         ),
-                  BT.Node('e',
-                          BT.Empty,
-                          BT.Empty
-                         )
-                 ),
-          BT.Node('c',
-                  BT.Empty,
-                  BT.Node('f',
-                          BT.Node('g',
-                                  BT.Empty,
-                                  BT.Empty
-                                 ),
-                          BT.Empty
-                         )
-                 )
-         )
-let example_layout_tree =
-  let leaf x = BT.Node (x,BT.Empty,BT.Empty) in
-    BT.Node('n', BT.Node('k', BT.Node('c', leaf 'a',
-                                      BT.Node('e', leaf 'd', leaf 'g')),
-                         leaf 'm'),
-            BT.Node('u', BT.Node('p', BT.Empty, leaf 'q'), BT.Empty));;

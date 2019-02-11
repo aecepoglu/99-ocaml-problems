@@ -1,2 +1,2 @@
 #!/usr/bin/env bash
-while true; do clear; utop -init "one.ml"; read -p "restart? "; done
+while true; do clear; utop -init "$1"; read -p "restart? "; done
