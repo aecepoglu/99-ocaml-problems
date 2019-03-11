@@ -463,6 +463,20 @@ module BT = struct
 
   let print_int = print_by string_of_int
   let print_char = print_by Char.escaped
+
+  let example_tree = Node('a',
+                          Node('b',
+                               Node('d', Empty, Empty),
+                               Node('e', Empty, Empty)
+                              ),
+                          Node('c',
+                               Empty,
+                               Node('f',
+                                    Node('g',
+                                         Empty, Empty),
+                                    Empty)
+                              )
+                         );;
 end
 
 module MT = struct
